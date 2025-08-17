@@ -1,4 +1,3 @@
-
 import * as ChriscoursesPerlinNoise from "https://esm.sh/@chriscourses/perlin-noise";
 
 // Editable values
@@ -10,6 +9,7 @@ const res = 8; // divide canvas width/height by this, lower number means more ce
 const baseZOffset = 0.0004; // how quickly the noise should move
 const lineColor = '#ffffffca';
 
+// Static variables
 let canvas, ctx;
 let fpsCount;
 let frameValues = [];
@@ -22,15 +22,27 @@ let zBoostValues = [];
 let noiseMin = 100;
 let noiseMax = 0;
 let mousePos = { x: -99, y: -99 };
-let mouseDown = true; // WIP
+let mouseDown = true;
 
-window.addEventListener('DOMContentLoaded', () => {
+function safeInit() {
   canvas = document.getElementById('res-canvas');
+  if (!canvas) {
+    console.warn("Canvas не найден, повторная попытка...");
+    return setTimeout(safeInit, 500);
+  }
+
   ctx = canvas.getContext('2d');
+  if (!ctx) {
+    console.warn("Context не создан, повторная попытка...");
+    return setTimeout(safeInit, 500);
+  }
+
   fpsCount = document.getElementById('fps-count');
   setupCanvas();
   animate();
-});
+}
+
+window.onload = safeInit;
 
 function setupCanvas() {
   canvasSize();
@@ -41,10 +53,9 @@ function setupCanvas() {
 }
 
 function canvasSize() {
-  // Set canvas size to fill the window
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   canvas.style.width = window.innerWidth + 'px';
   canvas.style.height = window.innerHeight + 'px';
   cols = Math.floor(canvas.width / res) + 1;
@@ -59,18 +70,18 @@ function canvasSize() {
   }
 }
 
-function animate() {
+function animate(timestamp = 0) {
+  requestAnimationFrame(animate);
+
+  // --- FPS ограничение ---
+  const frameInterval = MAX_FPS > 0 ? 1000 / MAX_FPS : 0;
+  if (frameInterval > 0 && timestamp - lastFrameTime < frameInterval) {
+    return;
+  }
+  lastFrameTime = timestamp;
+  // -----------------------
+
   const startTime = performance.now();
-  setTimeout(() => {
-    const endTime = performance.now();
-    const frameDuration = endTime - startTime;
-    frameValues.push(Math.round(1000 / frameDuration));
-    if (frameValues.length > 60 && showFPS && fpsCount) {
-      fpsCount.innerText = Math.round(frameValues.reduce((a, b) => a + b) / frameValues.length);
-      frameValues = [];
-    }
-    requestAnimationFrame(animate);
-  }, MAX_FPS > 0 ? 1000 / MAX_FPS : 0);
 
   if (mouseDown) {
     mouseOffset();
@@ -88,6 +99,15 @@ function animate() {
   }
   noiseMin = 100;
   noiseMax = 0;
+
+  // FPS вывод
+  const endTime = performance.now();
+  const frameDuration = endTime - startTime;
+  frameValues.push(Math.round(1000 / frameDuration));
+  if (frameValues.length > 60 && showFPS && fpsCount) {
+    fpsCount.innerText = Math.round(frameValues.reduce((a, b) => a + b) / frameValues.length);
+    frameValues = [];
+  }
 }
 
 function mouseOffset() {
